@@ -67,7 +67,7 @@ function applyFilter(r, g, b) {
 
 // Основная функция рисования
 function draw() {
-  const scale = 40; // базовый размер пикселя
+  const scale = 40; // размер пикселя
   const vw = video.videoWidth;
   const vh = video.videoHeight;
 
@@ -76,12 +76,14 @@ function draw() {
     return;
   }
 
+  // Рассчитываем размер канваса под окно
   const cw = window.innerWidth;
   const ch = window.innerHeight;
 
   canvas.width = cw;
   canvas.height = ch;
 
+  // Сохраняем пропорции видео
   const aspectVideo = vw / vh;
   const aspectCanvas = cw / ch;
 
@@ -94,12 +96,13 @@ function draw() {
     drawHeight = cw / aspectVideo;
   }
 
+  // Рисуем видео на скрытом канвасе с нужными размерами
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = drawWidth / scale;
   tempCanvas.height = drawHeight / scale;
   const tempCtx = tempCanvas.getContext('2d');
 
-  // зеркалируем видео
+  // Зеркалим изображение горизонтально
   tempCtx.save();
   tempCtx.translate(tempCanvas.width, 0);
   tempCtx.scale(-1, 1);
@@ -110,13 +113,11 @@ function draw() {
 
   ctx.clearRect(0, 0, cw, ch);
 
+  // Центрируем изображение на канвасе
   const offsetX = (cw - drawWidth) / 2;
   const offsetY = (ch - drawHeight) / 2;
 
-  // зоны: центр - детальная, боковые - крупные квадраты
-  const centerWidth = drawWidth * 0.5;
-  const sideWidth = (drawWidth - centerWidth) / 2;
-
+  // Рисуем "пиксели"
   for (let y = 0; y < tempCanvas.height; y++) {
     for (let x = 0; x < tempCanvas.width; x++) {
       const i = (y * tempCanvas.width + x) * 4;
@@ -124,23 +125,11 @@ function draw() {
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
 
-      let blockSize;
-      let fillStyle;
+      // применяем мрачный фильтр к каждому пикселю
+      const [fr, fg, fb] = applyFilter(r, g, b);
 
-      // Определяем, центр или боковая зона
-      if (x * scale > sideWidth && x * scale < sideWidth + centerWidth) {
-        // центр: применяем мрачный фильтр
-        blockSize = scale;
-        const [fr, fg, fb] = applyFilter(r, g, b);
-        fillStyle = `rgb(${fr},${fg},${fb})`;
-      } else {
-        // боковые зоны: крупные черно-белые квадраты для мозаики/QR-эффекта
-        blockSize = scale * 2;
-        fillStyle = Math.random() > 0.5 ? "#000" : "#111"; // очень тёмные оттенки
-      }
-
-      ctx.fillStyle = fillStyle;
-      ctx.fillRect(offsetX + x * blockSize, offsetY + y * blockSize, blockSize, blockSize);
+      ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+      ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
     }
   }
 
