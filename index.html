@@ -37,14 +37,16 @@ function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  let scale = 20; // размер пикселей (чем больше — тем грубее)
+  let scale = 50; // увеличили размер пикселей
 
   let w = canvas.width / scale;
   let h = canvas.height / scale;
 
+  // рисуем видео без зеркалирования
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // сбрасываем трансформацию
   ctx.drawImage(video, 0, 0, w, h);
-  let imageData = ctx.getImageData(0, 0, w, h);
 
+  let imageData = ctx.getImageData(0, 0, w, h);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   for (let y = 0; y < h; y++) {
