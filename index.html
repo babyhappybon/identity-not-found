@@ -2,10 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Pixel Camera</title>
+<title>Pixel Camera Fullscreen</title>
 <style>
 body { margin:0; background:black; overflow:hidden; }
-canvas { display:block; }
+canvas { display:block; width:100vw; height:100vh; }
 video { display:none; }
 </style>
 </head>
@@ -28,9 +28,14 @@ function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  const scale = Math.min(canvas.width / blocksX, canvas.height / blocksY);
-  const offsetX = (canvas.width - blocksX * scale)/2;
-  const offsetY = (canvas.height - blocksY * scale)/2;
+  const scaleX = canvas.width / blocksX;
+  const scaleY = canvas.height / blocksY;
+  const scale = Math.min(scaleX, scaleY);
+
+  const drawWidth = scale * blocksX;
+  const drawHeight = scale * blocksY;
+  const offsetX = (canvas.width - drawWidth) / 2;
+  const offsetY = (canvas.height - drawHeight) / 2;
 
   ctx.drawImage(video, 0, 0, blocksX, blocksY);
   const data = ctx.getImageData(0,0,blocksX,blocksY).data;
