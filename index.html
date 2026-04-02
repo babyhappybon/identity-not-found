@@ -34,29 +34,30 @@ navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
   alert("Camera access denied");
 });
 
-// 🎨 Художественный фильтр
+// 🎨 Мрачный художественный фильтр
 function applyFilter(r, g, b) {
   let nr = r / 255;
   let ng = g / 255;
   let nb = b / 255;
 
-  // 1) кинематографическая тональная кривая
-  nr = Math.pow(nr, 0.9);
-  ng = Math.pow(ng, 0.9);
-  nb = Math.pow(nb, 0.9);
+  // затемняем средние и светлые тона
+  nr = Math.pow(nr, 1.3);
+  ng = Math.pow(ng, 1.3);
+  nb = Math.pow(nb, 1.3);
 
-  // 2) насыщенность
-  const saturation = 1.3;
+  // приглушаем насыщенность
+  const saturation = 0.8;
   const avg = (nr + ng + nb) / 3;
   nr = avg + (nr - avg) * saturation;
   ng = avg + (ng - avg) * saturation;
   nb = avg + (nb - avg) * saturation;
 
-  // 3) цветовая тонировка (тёплый арт-тон)
-  nr = nr * 1.1 + 0.05;
-  ng = ng * 1.0 + 0.02;
-  nb = nb * 0.9 - 0.03;
+  // мрачная тонировка
+  nr = nr * 0.9;
+  ng = ng * 0.85;
+  nb = nb * 0.95 + 0.02;
 
+  // ограничиваем диапазон
   nr = Math.min(1, Math.max(0, nr));
   ng = Math.min(1, Math.max(0, ng));
   nb = Math.min(1, Math.max(0, nb));
@@ -66,7 +67,7 @@ function applyFilter(r, g, b) {
 
 // Основная функция рисования
 function draw() {
-  const scale = 40; // размер пикселя
+  const scale = 40; // базовый размер пикселя
   const vw = video.videoWidth;
   const vh = video.videoHeight;
 
@@ -98,6 +99,7 @@ function draw() {
   tempCanvas.height = drawHeight / scale;
   const tempCtx = tempCanvas.getContext('2d');
 
+  // зеркалируем видео
   tempCtx.save();
   tempCtx.translate(tempCanvas.width, 0);
   tempCtx.scale(-1, 1);
@@ -111,6 +113,10 @@ function draw() {
   const offsetX = (cw - drawWidth) / 2;
   const offsetY = (ch - drawHeight) / 2;
 
+  // зоны: центр - детальная, боковые - крупные квадраты
+  const centerWidth = drawWidth * 0.5;
+  const sideWidth = (drawWidth - centerWidth) / 2;
+
   for (let y = 0; y < tempCanvas.height; y++) {
     for (let x = 0; x < tempCanvas.width; x++) {
       const i = (y * tempCanvas.width + x) * 4;
@@ -118,11 +124,23 @@ function draw() {
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
 
-      // применяем художественный фильтр
-      const [fr, fg, fb] = applyFilter(r, g, b);
+      let blockSize;
+      let fillStyle;
 
-      ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
-      ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+      // Определяем, центр или боковая зона
+      if (x * scale > sideWidth && x * scale < sideWidth + centerWidth) {
+        // центр: применяем мрачный фильтр
+        blockSize = scale;
+        const [fr, fg, fb] = applyFilter(r, g, b);
+        fillStyle = `rgb(${fr},${fg},${fb})`;
+      } else {
+        // боковые зоны: крупные черно-белые квадраты для мозаики/QR-эффекта
+        blockSize = scale * 2;
+        fillStyle = Math.random() > 0.5 ? "#000" : "#111"; // очень тёмные оттенки
+      }
+
+      ctx.fillStyle = fillStyle;
+      ctx.fillRect(offsetX + x * blockSize, offsetY + y * blockSize, blockSize, blockSize);
     }
   }
 
