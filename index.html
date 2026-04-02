@@ -27,11 +27,13 @@ function draw() {
 
   const pixelsX = 40;
   const pixelsY = 30;
-  const scaleX = canvas.width / pixelsX;
-  const scaleY = canvas.height / pixelsY;
+
+  const scale = Math.min(canvas.width / pixelsX, canvas.height / pixelsY);
+  const offsetX = (canvas.width - pixelsX*scale)/2;
+  const offsetY = (canvas.height - pixelsY*scale)/2;
 
   ctx.drawImage(video, 0, 0, pixelsX, pixelsY);
-  const data = ctx.getImageData(0, 0, pixelsX, pixelsY).data;
+  const data = ctx.getImageData(0,0,pixelsX,pixelsY).data;
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -40,7 +42,7 @@ function draw() {
       const i = (y*pixelsX+x)*4;
       const r = data[i], g = data[i+1], b = data[i+2];
       ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(x*scaleX, y*scaleY, scaleX, scaleY);
+      ctx.fillRect(offsetX + x*scale, offsetY + y*scale, scale, scale);
     }
   }
 
