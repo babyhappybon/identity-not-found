@@ -25,37 +25,33 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-.then(stream => {
-  video.srcObject = stream;
-  video.play();
-})
-.catch(err => {
-  alert("Camera access denied");
-});
+.then(stream => { video.srcObject = stream; video.play(); })
+.catch(err => { alert("Camera access denied"); });
 
 function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  let scale = 1000; // размер пикселей (чем больше — тем грубее)
+  const pixelsX = 40;
+  const pixelsY = 30;
 
-  let w = canvas.width / scale;
-  let h = canvas.height / scale;
+  const scaleX = canvas.width / pixelsX;
+  const scaleY = canvas.height / pixelsY;
 
-  ctx.drawImage(video, 0, 0, w, h);
-  let imageData = ctx.getImageData(0, 0, w, h);
+  ctx.drawImage(video, 0, 0, pixelsX, pixelsY);
+  let imageData = ctx.getImageData(0, 0, pixelsX, pixelsY);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let i = (y * w + x) * 4;
+  for (let y = 0; y < pixelsY; y++) {
+    for (let x = 0; x < pixelsX; x++) {
+      let i = (y * pixelsX + x) * 4;
       let r = imageData.data[i];
       let g = imageData.data[i + 1];
       let b = imageData.data[i + 2];
 
       ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(x * scale, y * scale, scale, scale);
+      ctx.fillRect(x * scaleX, y * scaleY, scaleX, scaleY);
     }
   }
 
