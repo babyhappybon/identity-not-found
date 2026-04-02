@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -26,24 +26,25 @@ function draw() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  let scale = 100; // очень крупные пиксели
+  let scale = 80; // размер пикселей
   let w = Math.floor(canvas.width / scale);
   let h = Math.floor(canvas.height / scale);
 
-  // рисуем видео в уменьшенном разрешении
+  // Рисуем видео в уменьшенном разрешении
   ctx.drawImage(video, 0, 0, w, h);
   let imageData = ctx.getImageData(0, 0, w, h);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // убираем зеркалирование, переворачивая колонки
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
+  // Переставляем колонки, чтобы убрать зеркалирование
+  for(let y=0; y<h; y++){
+    for(let x=0; x<w; x++){
       let i = (y * w + x) * 4;
       let r = imageData.data[i];
       let g = imageData.data[i+1];
       let b = imageData.data[i+2];
 
+      // Отрисовываем пиксель на перевёрнутой колонке
       ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect((w-1-x)*scale, y*scale, scale, scale);
     }
