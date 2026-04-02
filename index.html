@@ -4,14 +4,19 @@
 <meta charset="UTF-8">
 <title>Scan</title>
 <style>
-body { margin:0; background:black; overflow:hidden; }
-canvas { display:block; width:100vw; height:100vh; }
-video { display:none; }
+body {
+  margin: 0;
+  background: black;
+}
+canvas {
+  width: 100vw;
+  height: 100vh;
+}
 </style>
 </head>
 <body>
 
-<video id="video" autoplay playsinline></video>
+<video id="video" autoplay playsinline style="display:none;"></video>
 <canvas id="canvas"></canvas>
 
 <script>
@@ -19,46 +24,42 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// Настройка камеры
-navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "user" } // фронтальная камера
-})
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
 .then(stream => {
-    video.srcObject = stream;
-    return video.play();
+  video.srcObject = stream;
+  video.play();
 })
-.catch(err => alert("Camera access denied"));
-
-// Размер пикселей (безопасный диапазон: 20-80)
-let scale = 40;
+.catch(err => {
+  alert("Camera access denied");
+});
 
 function draw() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 
-    let w = Math.floor(canvas.width / scale);
-    let h = Math.floor(canvas.height / scale);
+  let scale = 20; // размер пикселей (чем больше — тем грубее)
 
-    // Снимаем кадр с видео в маленьком разрешении
-    ctx.drawImage(video, 0, 0, w, h);
-    const imageData = ctx.getImageData(0, 0, w, h);
+  let w = canvas.width / scale;
+  let h = canvas.height / scale;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0, w, h);
+  let imageData = ctx.getImageData(0, 0, w, h);
 
-    // Переворачиваем колонки, чтобы убрать зеркалирование
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
-            const r = imageData.data[i];
-            const g = imageData.data[i + 1];
-            const b = imageData.data[i + 2];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = `rgb(${r},${g},${b})`;
-            ctx.fillRect((w - 1 - x) * scale, y * scale, scale, scale);
-        }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let i = (y * w + x) * 4;
+      let r = imageData.data[i];
+      let g = imageData.data[i + 1];
+      let b = imageData.data[i + 2];
+
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(x * scale, y * scale, scale, scale);
     }
+  }
 
-    requestAnimationFrame(draw);
+  requestAnimationFrame(draw);
 }
 
 draw();
