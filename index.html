@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Scan</title>
+<title>Pixel Scan</title>
 <style>
-body {
-  margin: 0;
-  background: black;
-  overflow: hidden;
-}
-canvas {
-  display: block;
-}
+  body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+  }
 </style>
 </head>
 <body>
@@ -24,15 +24,15 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// Камера
+// Получаем доступ к камере
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-.then(stream => {
-  video.srcObject = stream;
-  video.play();
-})
-.catch(() => alert("Camera access denied"));
+  .then(stream => {
+    video.srcObject = stream;
+    video.play();
+  })
+  .catch(() => alert("Доступ к камере запрещён"));
 
-// Фильтр
+// Фильтр для пикселей
 function applyFilter(r, g, b) {
   let nr = r / 255;
   let ng = g / 255;
@@ -56,7 +56,7 @@ function applyFilter(r, g, b) {
   return [nr * 255, ng * 255, nb * 255];
 }
 
-// QR-угол (рамка → зазор → центр)
+// Рисуем QR-подобный угол
 function drawQR(x, y, size) {
   const border = size * 0.2;
   const gap = size * 0.15;
@@ -73,11 +73,10 @@ function drawQR(x, y, size) {
   // Центр
   const innerX = x + border + gap;
   const innerY = y + border + gap;
-
   ctx.fillRect(innerX, innerY, inner, inner);
 }
 
-// Рендер
+// Основной рендер
 function draw() {
   const pixelSize = 35;
   const vw = video.videoWidth;
@@ -98,7 +97,6 @@ function draw() {
   const aspectCanvas = cw / ch;
 
   let drawWidth, drawHeight;
-
   if (aspectCanvas > aspectVideo) {
     drawHeight = ch;
     drawWidth = ch * aspectVideo;
@@ -107,12 +105,13 @@ function draw() {
     drawHeight = cw / aspectVideo;
   }
 
+  // Временный холст для уменьшенного изображения
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = Math.ceil(drawWidth / pixelSize);
   tempCanvas.height = Math.ceil(drawHeight / pixelSize);
   const tempCtx = tempCanvas.getContext('2d');
 
-  // Зеркало
+  // Зеркало видео
   tempCtx.save();
   tempCtx.translate(tempCanvas.width, 0);
   tempCtx.scale(-1, 1);
@@ -123,49 +122,47 @@ function draw() {
 
   ctx.clearRect(0, 0, cw, ch);
 
-  // Центрирование
   const offsetX = Math.round((cw - drawWidth) / 2);
   const offsetY = Math.round((ch - drawHeight) / 2);
 
-  // Точное количество колонок и рядов для нижнего ряда
   const cols = Math.floor(drawWidth / pixelSize);
   const rows = Math.floor(drawHeight / pixelSize);
   const pxW = drawWidth / cols;
   const pxH = drawHeight / rows;
 
-  // Пиксельный рендер
+  // Рисуем пиксели
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const i = (y * tempCanvas.width + x) * 4;
-
       const r = imageData.data[i];
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
-
       const [fr, fg, fb] = applyFilter(r, g, b);
 
-      ctx.fillStyle = rgb(${fr}, ${fg}, ${fb});
-      ctx.fillRect(
-        offsetX + x * pxW,
-        offsetY + y * pxH,
-        pxW,
-        pxH
-      );
+      ctx.fillStyle = `rgb(${fr.toFixed(0)}, ${fg.toFixed(0)}, ${fb.toFixed(0)})`;
+      ctx.fillRect(offsetX + x * pxW, offsetY + y * pxH, pxW, pxH);
     }
   }
 
-  // QR углы строго по видео
+  // Рисуем QR-углы
   const qrSize = Math.min(120, drawWidth / 5);
-
-  drawQR(offsetX, offsetY, qrSize); // верхний левый
-  drawQR(offsetX + drawWidth - qrSize, offsetY, qrSize); // верхний правый
-  drawQR(offsetX, offsetY + drawHeight - qrSize, qrSize); // нижний левый
-  drawQR(offsetX + drawWidth - qrSize, offsetY + drawHeight - qrSize, qrSize); // нижний правый
+  drawQR(offsetX, offsetY, qrSize);
+  drawQR(offsetX + drawWidth - qrSize, offsetY, qrSize);
+  drawQR(offsetX, offsetY + drawHeight - qrSize, qrSize);
+  drawQR(offsetX + drawWidth - qrSize, offsetY + drawHeight - qrSize, qrSize);
 
   requestAnimationFrame(draw);
 }
 
+// Запуск
 draw();
+
+// Поддержка ресайза окна
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
 </script>
 
 </body>
