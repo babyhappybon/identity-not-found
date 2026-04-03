@@ -24,89 +24,81 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// Получаем камеру
+// Камера
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
 .then(stream => {
   video.srcObject = stream;
   video.play();
 })
-.catch(err => {
-  alert("Camera access denied");
-});
+.catch(() => alert("Camera access denied"));
 
-// Мрачный художественный фильтр
+// Фильтр
 function applyFilter(r, g, b) {
   let nr = r / 255;
   let ng = g / 255;
   let nb = b / 255;
-  
-  // затемняем средние и светлые тона
+
   nr = Math.pow(nr, 1.3);
   ng = Math.pow(ng, 1.3);
   nb = Math.pow(nb, 1.3);
-  
-  // приглушаем насыщенность
-  const saturation = 0.8;
+
   const avg = (nr + ng + nb) / 3;
+  const saturation = 0.8;
+
   nr = avg + (nr - avg) * saturation;
   ng = avg + (ng - avg) * saturation;
   nb = avg + (nb - avg) * saturation;
-  
-  // мрачная тонировка
+
   nr = nr * 0.9;
   ng = ng * 0.85;
   nb = nb * 0.95 + 0.02;
-  
-  // ограничиваем диапазон
-  nr = Math.min(1, Math.max(0, nr));
-  ng = Math.min(1, Math.max(0, ng));
-  nb = Math.min(1, Math.max(0, nb));
-  
+
   return [nr * 255, ng * 255, nb * 255];
 }
 
-// QR-угол
+// ✅ ИСПРАВЛЕННЫЙ QR-угол (рамка → зазор → центр)
 function drawQR(x, y, size) {
-  const borderWidth = size / 5;
-  
+  const border = size * 0.2;
+  const gap = size * 0.15;
+  const inner = size * 0.3;
+
   ctx.fillStyle = "#000";
-  
-  // Внешние полосы
-  ctx.fillRect(x, y, size, borderWidth);
-  ctx.fillRect(x, y + size - borderWidth, size, borderWidth);
-  ctx.fillRect(x, y, borderWidth, size);
-  ctx.fillRect(x + size - borderWidth, y, borderWidth, size);
-  
-  // Внутренний квадрат
-  const innerSize = size / 3;
-  const innerX = x + (size - innerSize) / 2;
-  const innerY = y + (size - innerSize) / 2;
-  ctx.fillRect(innerX, innerY, innerSize, innerSize);
+
+  // Рамка
+  ctx.fillRect(x, y, size, border);
+  ctx.fillRect(x, y + size - border, size, border);
+  ctx.fillRect(x, y, border, size);
+  ctx.fillRect(x + size - border, y, border, size);
+
+  // Центр (с отступом)
+  const innerX = x + border + gap;
+  const innerY = y + border + gap;
+
+  ctx.fillRect(innerX, innerY, inner, inner);
 }
 
-// Основная функция рисования
+// Рендер
 function draw() {
-  const pixelSize = 35; // размер пикселя
+  const pixelSize = 35;
   const vw = video.videoWidth;
   const vh = video.videoHeight;
 
-  if (vw === 0 || vh === 0) {
+  if (!vw || !vh) {
     requestAnimationFrame(draw);
     return;
   }
 
-  // Рассчитываем размер канваса под окно
   const cw = window.innerWidth;
   const ch = window.innerHeight;
 
   canvas.width = cw;
   canvas.height = ch;
 
-  // Сохраняем пропорции видео
   const aspectVideo = vw / vh;
   const aspectCanvas = cw / ch;
 
   let drawWidth, drawHeight;
+
   if (aspectCanvas > aspectVideo) {
     drawHeight = ch;
     drawWidth = ch * aspectVideo;
@@ -115,13 +107,12 @@ function draw() {
     drawHeight = cw / aspectVideo;
   }
 
-  // Рисуем видео на скрытом канвасе с нужными размерами
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = Math.ceil(drawWidth / pixelSize);
   tempCanvas.height = Math.ceil(drawHeight / pixelSize);
   const tempCtx = tempCanvas.getContext('2d');
 
-  // Зеркалим изображение горизонтально
+  // Зеркало
   tempCtx.save();
   tempCtx.translate(tempCanvas.width, 0);
   tempCtx.scale(-1, 1);
@@ -132,37 +123,37 @@ function draw() {
 
   ctx.clearRect(0, 0, cw, ch);
 
-  // Центрируем изображение на канвасе
   const offsetX = (cw - drawWidth) / 2;
   const offsetY = (ch - drawHeight) / 2;
 
-  // Рисуем "пиксели" с применением фильтра
+  // Пиксельный рендер
   for (let y = 0; y < tempCanvas.height; y++) {
     for (let x = 0; x < tempCanvas.width; x++) {
       const i = (y * tempCanvas.width + x) * 4;
+
       const r = imageData.data[i];
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
-      
-      // Применяем мрачный фильтр
-      const [filteredR, filteredG, filteredB] = applyFilter(r, g, b);
 
-      ctx.fillStyle = `rgb(${filteredR}, ${filteredG}, ${filteredB})`;
-      ctx.fillRect(offsetX + x * pixelSize, offsetY + y * pixelSize, pixelSize, pixelSize);
+      const [fr, fg, fb] = applyFilter(r, g, b);
+
+      ctx.fillStyle = `rgb(${fr}, ${fg}, ${fb})`;
+      ctx.fillRect(
+        offsetX + x * pixelSize,
+        offsetY + y * pixelSize,
+        pixelSize,
+        pixelSize
+      );
     }
   }
-  
-  // Рисуем QR-квадраты по УГЛАМ ВИДЕО (не экрана)
-  const qrSize = Math.min(100, drawWidth / 4, drawHeight / 4); // размер квадрата относительно видео
-  const margin = 10; // отступ от краёв видео
-  
-  // Верхний-левый угол видео
+
+  // QR углы по углам ВИДЕО
+  const qrSize = Math.min(120, drawWidth / 5);
+  const margin = 20;
+
   drawQR(offsetX + margin, offsetY + margin, qrSize);
-  // Верхний-правый угол видео
   drawQR(offsetX + drawWidth - qrSize - margin, offsetY + margin, qrSize);
-  // Нижний-левый угол видео
   drawQR(offsetX + margin, offsetY + drawHeight - qrSize - margin, qrSize);
-  // Нижний-правый угол видео
   drawQR(offsetX + drawWidth - qrSize - margin, offsetY + drawHeight - qrSize - margin, qrSize);
 
   requestAnimationFrame(draw);
