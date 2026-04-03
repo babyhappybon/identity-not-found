@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Scan QR-style Soft</title>
+<title>Scan QR-style Minimal</title>
 <style>
 body {
   margin: 0;
@@ -50,12 +50,12 @@ function drawQR(x,y,size){
   ctx.fillRect(x+border+gap,y+border+gap,inner,inner);
 }
 
-// Генерация мягких черных пикселей
-let softBlack=[];
+// Генерация минимальных черных пикселей
+let minimalBlack=[];
 let qrExclusion=[];
 
-function initSoftBlack(cols, rows, qrSize){
-  softBlack=[];
+function initMinimalBlack(cols, rows, qrSize){
+  minimalBlack=[];
   qrExclusion = [
     {x:0, y:0}, 
     {x:cols-qrSize, y:0}, 
@@ -64,20 +64,20 @@ function initSoftBlack(cols, rows, qrSize){
   ];
   
   const centerX = cols/2, centerY = rows/2;
-  const radius = Math.min(cols, rows)/2.2;
+  const radius = Math.min(cols, rows)/2.5; // зона центра чистая
 
   for(let y=0;y<rows;y++){
     for(let x=0;x<cols;x++){
       const dx = x-centerX, dy=y-centerY;
       const dist = Math.sqrt(dx*dx+dy*dy);
-      const prob = Math.max(0,(dist-radius/2)/(radius/2))*0.15; // редкие пиксели
+      const prob = Math.max(0,(dist-radius/2)/(radius/2))*0.08; // очень мало пикселей
       if(Math.random()<prob){
-        // Проверка на попадание в зоны QR
+        // Проверка на QR-зоны
         let safe = true;
         for(let q of qrExclusion){
           if(x>=q.x && x<q.x+qrSize && y>=q.y && y<q.y+qrSize){ safe=false; break;}
         }
-        if(safe) softBlack.push({x,y});
+        if(safe) minimalBlack.push({x,y});
       }
     }
   }
@@ -119,8 +119,8 @@ function draw(){
   const pxW=drawWidth/cols;
   const pxH=drawHeight/rows;
 
-  const qrSize=Math.min(7,Math.floor(cols/8)); // QR-зона для черных пикселей
-  if(softBlack.length===0) initSoftBlack(cols, rows, qrSize);
+  const qrSize=Math.min(7,Math.floor(cols/8));
+  if(minimalBlack.length===0) initMinimalBlack(cols, rows, qrSize);
 
   // Рисуем видео с фильтром
   for(let y=0;y<rows;y++){
@@ -133,9 +133,9 @@ function draw(){
     }
   }
 
-  // Мягкие черные пиксели
+  // Минимальные черные пиксели
   ctx.fillStyle="#000";
-  softBlack.forEach(p=>{
+  minimalBlack.forEach(p=>{
     ctx.fillRect(offsetX+p.x*pxW, offsetY+p.y*pxH, pxW, pxH);
   });
 
