@@ -152,14 +152,18 @@ function draw() {
     }
   }
   
-  // Рисуем QR-квадраты по углам экрана
-  const qrSize = 120;
-  const margin = 20;
+  // Рисуем QR-квадраты по УГЛАМ ВИДЕО (не экрана)
+  const qrSize = Math.min(100, drawWidth / 4, drawHeight / 4); // размер квадрата относительно видео
+  const margin = 10; // отступ от краёв видео
   
-  drawQR(margin, margin, qrSize);
-  drawQR(cw - qrSize - margin, margin, qrSize);
-  drawQR(margin, ch - qrSize - margin, qrSize);
-  drawQR(cw - qrSize - margin, ch - qrSize - margin, qrSize);
+  // Верхний-левый угол видео
+  drawQR(offsetX + margin, offsetY + margin, qrSize);
+  // Верхний-правый угол видео
+  drawQR(offsetX + drawWidth - qrSize - margin, offsetY + margin, qrSize);
+  // Нижний-левый угол видео
+  drawQR(offsetX + margin, offsetY + drawHeight - qrSize - margin, qrSize);
+  // Нижний-правый угол видео
+  drawQR(offsetX + drawWidth - qrSize - margin, offsetY + drawHeight - qrSize - margin, qrSize);
 
   requestAnimationFrame(draw);
 }
