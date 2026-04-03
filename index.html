@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Scan</title>
+<title>Scan QR-style</title>
 <style>
 body {
   margin: 0;
@@ -34,25 +34,14 @@ navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
 
 // Мрачный фильтр
 function applyFilter(r, g, b) {
-  let nr = r / 255;
-  let ng = g / 255;
-  let nb = b / 255;
-
-  nr = Math.pow(nr, 1.3);
-  ng = Math.pow(ng, 1.3);
-  nb = Math.pow(nb, 1.3);
-
+  let nr = r / 255, ng = g / 255, nb = b / 255;
+  nr = Math.pow(nr, 1.3); ng = Math.pow(ng, 1.3); nb = Math.pow(nb, 1.3);
   const avg = (nr + ng + nb) / 3;
   const saturation = 0.8;
-
   nr = avg + (nr - avg) * saturation;
   ng = avg + (ng - avg) * saturation;
   nb = avg + (nb - avg) * saturation;
-
-  nr = nr * 0.9;
-  ng = ng * 0.85;
-  nb = nb * 0.95 + 0.02;
-
+  nr = nr * 0.9; ng = ng * 0.85; nb = nb * 0.95 + 0.02;
   return [nr * 255, ng * 255, nb * 255];
 }
 
@@ -61,36 +50,29 @@ function drawQR(x, y, size) {
   const border = size * 0.2;
   const gap = size * 0.15;
   const inner = size * 0.3;
-
   ctx.fillStyle = "#000";
-
   ctx.fillRect(x, y, size, border);
   ctx.fillRect(x, y + size - border, size, border);
   ctx.fillRect(x, y, border, size);
   ctx.fillRect(x + size - border, y, border, size);
-
   const innerX = x + border + gap;
   const innerY = y + border + gap;
   ctx.fillRect(innerX, innerY, inner, inner);
 }
 
-// Предвычислим черные пиксели один раз
-let blackPixels = [];
+// Генерация черной рамки-«червячков»
+let blackFrame = [];
 
-function initBlackPixels(cols, rows) {
-  blackPixels = [];
-  const centerX = cols / 2;
-  const centerY = rows / 2;
-  const radius = Math.min(cols, rows) / 3; // область центра без черных
-
+function initBlackFrame(cols, rows) {
+  blackFrame = [];
+  const margin = Math.floor(Math.min(cols, rows) / 8); // ширина рамки
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const distance = Math.sqrt(dx*dx + dy*dy);
-      if (distance > radius) {
-        if (Math.random() < 0.02) { // очень мало черных пикселей
-          blackPixels.push({x, y});
+      // рамка по краям
+      if (x < margin || x >= cols - margin || y < margin || y >= rows - margin) {
+        // делаем «червячки» — связные блоки
+        if (Math.random() < 0.6) {
+          blackFrame.push({x, y});
         }
       }
     }
@@ -101,37 +83,24 @@ function draw() {
   const pixelSize = 35;
   const vw = video.videoWidth;
   const vh = video.videoHeight;
-
-  if (!vw || !vh) {
-    requestAnimationFrame(draw);
-    return;
-  }
+  if (!vw || !vh) { requestAnimationFrame(draw); return; }
 
   const cw = window.innerWidth;
   const ch = window.innerHeight;
-
   canvas.width = cw;
   canvas.height = ch;
 
   const aspectVideo = vw / vh;
   const aspectCanvas = cw / ch;
-
   let drawWidth, drawHeight;
-
-  if (aspectCanvas > aspectVideo) {
-    drawHeight = ch;
-    drawWidth = ch * aspectVideo;
-  } else {
-    drawWidth = cw;
-    drawHeight = cw / aspectVideo;
-  }
+  if (aspectCanvas > aspectVideo) { drawHeight = ch; drawWidth = ch * aspectVideo; }
+  else { drawWidth = cw; drawHeight = cw / aspectVideo; }
 
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = Math.ceil(drawWidth / pixelSize);
   tempCanvas.height = Math.ceil(drawHeight / pixelSize);
   const tempCtx = tempCanvas.getContext('2d');
 
-  // Зеркало
   tempCtx.save();
   tempCtx.translate(tempCanvas.width, 0);
   tempCtx.scale(-1, 1);
@@ -142,40 +111,37 @@ function draw() {
 
   ctx.clearRect(0, 0, cw, ch);
 
-  const offsetX = Math.round((cw - drawWidth) / 2);
-  const offsetY = Math.round((ch - drawHeight) / 2);
+  const offsetX = Math.round((cw - drawWidth)/2);
+  const offsetY = Math.round((ch - drawHeight)/2);
 
   const cols = Math.floor(drawWidth / pixelSize);
   const rows = Math.floor(drawHeight / pixelSize);
   const pxW = drawWidth / cols;
   const pxH = drawHeight / rows;
 
-  // Инициализация черных пикселей один раз
-  if (blackPixels.length === 0) initBlackPixels(cols, rows);
+  if (blackFrame.length === 0) initBlackFrame(cols, rows);
 
-  // Пиксели видео
+  // Рисуем видео с фильтром
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const i = (y * tempCanvas.width + x) * 4;
       const r = imageData.data[i];
-      const g = imageData.data[i + 1];
-      const b = imageData.data[i + 2];
-
+      const g = imageData.data[i+1];
+      const b = imageData.data[i+2];
       const [fr, fg, fb] = applyFilter(r, g, b);
-
-      ctx.fillStyle = `rgb(${fr}, ${fg}, ${fb})`;
-      ctx.fillRect(offsetX + x * pxW, offsetY + y * pxH, pxW, pxH);
+      ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+      ctx.fillRect(offsetX + x*pxW, offsetY + y*pxH, pxW, pxH);
     }
   }
 
-  // Рисуем статичные черные пиксели
+  // Рисуем статичную черную рамку-«червячки»
   ctx.fillStyle = "#000";
-  blackPixels.forEach(p => {
-    ctx.fillRect(offsetX + p.x * pxW, offsetY + p.y * pxH, pxW, pxH);
+  blackFrame.forEach(p => {
+    ctx.fillRect(offsetX + p.x*pxW, offsetY + p.y*pxH, pxW, pxH);
   });
 
   // QR-углы
-  const qrSize = Math.min(120, drawWidth / 5);
+  const qrSize = Math.min(120, drawWidth/5);
   drawQR(offsetX, offsetY, qrSize);
   drawQR(offsetX + drawWidth - qrSize, offsetY, qrSize);
   drawQR(offsetX, offsetY + drawHeight - qrSize, qrSize);
@@ -186,6 +152,9 @@ function draw() {
 
 draw();
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
