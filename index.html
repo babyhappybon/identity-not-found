@@ -74,6 +74,29 @@ function drawQR(x, y, size) {
   ctx.fillRect(innerX, innerY, inner, inner);
 }
 
+// Предвычислим черные пиксели один раз
+let blackPixels = [];
+
+function initBlackPixels(cols, rows) {
+  blackPixels = [];
+  const centerX = cols / 2;
+  const centerY = rows / 2;
+  const radius = Math.min(cols, rows) / 3; // область центра без черных
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const distance = Math.sqrt(dx*dx + dy*dy);
+      if (distance > radius) {
+        if (Math.random() < 0.02) { // очень мало черных пикселей
+          blackPixels.push({x, y});
+        }
+      }
+    }
+  }
+}
+
 function draw() {
   const pixelSize = 35;
   const vw = video.videoWidth;
@@ -127,7 +150,10 @@ function draw() {
   const pxW = drawWidth / cols;
   const pxH = drawHeight / rows;
 
-  // Пиксели видео с фильтром
+  // Инициализация черных пикселей один раз
+  if (blackPixels.length === 0) initBlackPixels(cols, rows);
+
+  // Пиксели видео
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const i = (y * tempCanvas.width + x) * 4;
@@ -139,22 +165,16 @@ function draw() {
 
       ctx.fillStyle = `rgb(${fr}, ${fg}, ${fb})`;
       ctx.fillRect(offsetX + x * pxW, offsetY + y * pxH, pxW, pxH);
-
-      // Добавляем "черные пиксели по краям"
-      const centerX = cols / 2;
-      const centerY = rows / 2;
-      const dx = Math.abs(x - centerX) / centerX;
-      const dy = Math.abs(y - centerY) / centerY;
-      const distanceFactor = Math.max(dx, dy);
-
-      if (Math.random() < distanceFactor * 0.7) { // вероятность зависит от расстояния до центра
-        ctx.fillStyle = "#000";
-        ctx.fillRect(offsetX + x * pxW, offsetY + y * pxH, pxW, pxH);
-      }
     }
   }
 
-  // QR углы
+  // Рисуем статичные черные пиксели
+  ctx.fillStyle = "#000";
+  blackPixels.forEach(p => {
+    ctx.fillRect(offsetX + p.x * pxW, offsetY + p.y * pxH, pxW, pxH);
+  });
+
+  // QR-углы
   const qrSize = Math.min(120, drawWidth / 5);
   drawQR(offsetX, offsetY, qrSize);
   drawQR(offsetX + drawWidth - qrSize, offsetY, qrSize);
