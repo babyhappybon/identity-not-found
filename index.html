@@ -1,16 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Scan</title>
+<style>
+body {
+  margin: 0;
+  background: black;
+  overflow: hidden;
+}
+canvas {
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<video id="video" autoplay playsinline style="display:none;"></video>
+<canvas id="canvas"></canvas>
+
 <script>
-// QR-угол через маску (идеальный квадратный "кольцевой" эффект)
-function drawDynamicQRCorner(x, y, size, scale, tempCanvas) {
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Камера
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+.then(stream => {
+  video.srcObject = stream;
+  video.play();
+})
+.catch(err => {
+  alert("Camera access denied");
+});
+
+// QR-угол с правильным квадратным "кольцом"
+function drawQR(x, y, size, scale, tempCanvas) {
   const tempCtx = tempCanvas.getContext('2d');
   const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
 
-  const outerLine = size / 5;   // внешняя рамка
-  const innerSize = size / 2;   // внутренний квадрат
+  const outerLine = size / 5;
+  const innerSize = size / 2;
 
   const innerX = x + (size - innerSize) / 2;
   const innerY = y + (size - innerSize) / 2;
 
-  // 1️⃣ Рисуем ВЕСЬ квадрат видео
+  // 1. рисуем видео внутри квадрата
   for (let py = 0; py < size; py += scale) {
     for (let px = 0; px < size; px += scale) {
       const tx = Math.floor(px / size * tempCanvas.width);
@@ -21,25 +56,100 @@ function drawDynamicQRCorner(x, y, size, scale, tempCanvas) {
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
 
-      const [fr, fg, fb] = applyFilter(r, g, b);
-      ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(x + px, y + py, scale, scale);
     }
   }
 
-  // 2️⃣ Вырезаем центр (делаем "дырку")
+  // 2. вырезаем центр
   ctx.globalCompositeOperation = "destination-out";
   ctx.fillRect(innerX, innerY, innerSize, innerSize);
   ctx.globalCompositeOperation = "source-over";
 
-  // 3️⃣ Рисуем внутренний черный квадрат
+  // 3. внутренний черный квадрат
   ctx.fillStyle = "#000";
   ctx.fillRect(innerX, innerY, innerSize, innerSize);
 
-  // 4️⃣ Рисуем внешнюю рамку поверх
+  // 4. внешняя рамка
   ctx.fillRect(x, y, size, outerLine);
   ctx.fillRect(x, y + size - outerLine, size, outerLine);
   ctx.fillRect(x, y, outerLine, size);
   ctx.fillRect(x + size - outerLine, y, outerLine, size);
 }
+
+// Основная функция
+function draw() {
+  const scale = 40;
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+
+  if (vw === 0 || vh === 0) {
+    requestAnimationFrame(draw);
+    return;
+  }
+
+  const cw = window.innerWidth;
+  const ch = window.innerHeight;
+
+  canvas.width = cw;
+  canvas.height = ch;
+
+  const aspectVideo = vw / vh;
+  const aspectCanvas = cw / ch;
+
+  let drawWidth, drawHeight;
+  if (aspectCanvas > aspectVideo) {
+    drawHeight = ch;
+    drawWidth = ch * aspectVideo;
+  } else {
+    drawWidth = cw;
+    drawHeight = cw / aspectVideo;
+  }
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = drawWidth / scale;
+  tempCanvas.height = drawHeight / scale;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  tempCtx.save();
+  tempCtx.translate(tempCanvas.width, 0);
+  tempCtx.scale(-1, 1);
+  tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+  tempCtx.restore();
+
+  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+  ctx.clearRect(0, 0, cw, ch);
+
+  const offsetX = (cw - drawWidth) / 2;
+  const offsetY = (ch - drawHeight) / 2;
+
+  // пиксели
+  for (let y = 0; y < tempCanvas.height; y++) {
+    for (let x = 0; x < tempCanvas.width; x++) {
+      const i = (y * tempCanvas.width + x) * 4;
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+    }
+  }
+
+  // QR-углы
+  const size = 160;
+
+  drawQR(offsetX, offsetY, size, scale, tempCanvas);
+  drawQR(offsetX + drawWidth - size, offsetY, size, scale, tempCanvas);
+  drawQR(offsetX, offsetY + drawHeight - size, size, scale, tempCanvas);
+  drawQR(offsetX + drawWidth - size, offsetY + drawHeight - size, size, scale, tempCanvas);
+
+  requestAnimationFrame(draw);
+}
+
+draw();
 </script>
+
+</body>
+</html>
