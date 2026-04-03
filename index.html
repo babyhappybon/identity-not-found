@@ -124,16 +124,29 @@ function draw() {
   const offsetX = (cw - drawWidth) / 2;
   const offsetY = (ch - drawHeight) / 2;
 
-  // пиксели
-  for (let y = 0; y < tempCanvas.height; y++) {
-    for (let x = 0; x < tempCanvas.width; x++) {
-      const i = (y * tempCanvas.width + x) * 4;
-      const r = imageData.data[i];
-      const g = imageData.data[i + 1];
-      const b = imageData.data[i + 2];
+function draw() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let scale = 20; // размер пикселей (чем больше — тем грубее)
+
+  let w = canvas.width / scale;
+  let h = canvas.height / scale;
+
+  ctx.drawImage(video, 0, 0, w, h);
+  let imageData = ctx.getImageData(0, 0, w, h);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let i = (y * w + x) * 4;
+      let r = imageData.data[i];
+      let g = imageData.data[i + 1];
+      let b = imageData.data[i + 2];
 
       ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+      ctx.fillRect(x * scale, y * scale, scale, scale);
     }
   }
 
