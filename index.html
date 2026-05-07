@@ -53,7 +53,7 @@ function applyFilter(r, g, b) {
   ng = ng * 0.85;
   nb = nb * 0.95 + 0.02;
 
-  return [nr * 255, ng * 255, nb * 255];
+  return [nr * 255, nr * 255, nb * 255];
 }
 
 // Рисуем QR-подобный угол
@@ -76,114 +76,55 @@ function drawQR(x, y, size) {
   ctx.fillRect(innerX, innerY, inner, inner);
 }
 
-// НОВОЕ: живые QR-блоки
-function drawQRNoise(offsetX, offsetY, drawWidth, drawHeight, pxW, pxH, cols, rows, time) {
+// НОВОЕ: черные QR-пиксели по краям
+function drawEdgePixels(offsetX, offsetY, cols, rows, pxW, pxH) {
 
   ctx.fillStyle = "#000";
 
-  const centerStart = cols * 0.28;
-  const centerEnd = cols * 0.72;
+  const centerStartX = cols * 0.3;
+  const centerEndX = cols * 0.7;
+
+  const centerStartY = rows * 0.25;
+  const centerEndY = rows * 0.75;
 
   for (let y = 0; y < rows; y++) {
 
-    // Живое движение краёв
-    const leftWave =
-      Math.floor(
-        4 +
-        Math.sin(y * 0.35 + time * 0.002) * 3 +
-        Math.sin(y * 0.12 + time * 0.0015) * 2
-      );
-
-    const rightWave =
-      Math.floor(
-        4 +
-        Math.cos(y * 0.3 + time * 0.0025) * 3 +
-        Math.sin(y * 0.15 + time * 0.001) * 2
-      );
-
-    // ЛЕВАЯ СТОРОНА
-    for (let x = 0; x < leftWave; x++) {
-
-      if ((x + y + Math.floor(time * 0.01)) % 2 === 0 || Math.random() > 0.7) {
-
-        ctx.fillRect(
-          offsetX + x * pxW,
-          offsetY + y * pxH,
-          pxW,
-          pxH
-        );
-      }
-    }
-
-    // ПРАВАЯ СТОРОНА
-    for (let x = cols - rightWave; x < cols; x++) {
-
-      if (
-        (x + y + Math.floor(time * 0.01)) % 2 === 0 ||
-        Math.random() > 0.7
-      ) {
-
-        ctx.fillRect(
-          offsetX + x * pxW,
-          offsetY + y * pxH,
-          pxW,
-          pxH
-        );
-      }
-    }
-
-    // QR-помехи вокруг лица
     for (let x = 0; x < cols; x++) {
 
-      const inCenter = x > centerStart && x < centerEnd;
+      // Оставляем центр чистым
+      const inCenter =
+        x > centerStartX &&
+        x < centerEndX &&
+        y > centerStartY &&
+        y < centerEndY;
 
-      if (!inCenter) {
+      if (inCenter) continue;
 
-        const noise =
-          Math.sin(x * 0.9 + y * 0.4 + time * 0.003);
+      // Только по краям
+      const edge =
+        x < 4 ||
+        x > cols - 5 ||
+        y < 3 ||
+        y > rows - 4;
 
-        if (noise > 0.82) {
+      if (!edge) continue;
 
-          ctx.fillRect(
-            offsetX + x * pxW,
-            offsetY + y * pxH,
-            pxW,
-            pxH
-          );
-        }
+      // Случайные QR-квадраты
+      if (Math.random() > 0.72) {
+
+        ctx.fillRect(
+          offsetX + x * pxW,
+          offsetY + y * pxH,
+          pxW,
+          pxH
+        );
       }
     }
-  }
-
-  // Летающие QR-блоки
-  for (let i = 0; i < 25; i++) {
-
-    const nx =
-      Math.sin(i * 77 + time * 0.0015) * drawWidth * 0.35 +
-      drawWidth * 0.5;
-
-    const ny =
-      Math.cos(i * 99 + time * 0.0012) * drawHeight * 0.4 +
-      drawHeight * 0.5;
-
-    const size =
-      ((Math.sin(i + time * 0.003) + 1) * 0.5 + 0.5) * pxW;
-
-    // не залезаем в центр лица
-    if (nx > drawWidth * 0.3 && nx < drawWidth * 0.7) continue;
-
-    ctx.fillRect(
-      offsetX + nx,
-      offsetY + ny,
-      size,
-      size
-    );
   }
 }
 
 // Основной рендер
-function draw(time = 0) {
-
+function draw() {
   const pixelSize = 35;
   const vw = video.videoWidth;
   const vh = video.videoHeight;
@@ -203,7 +144,6 @@ function draw(time = 0) {
   const aspectCanvas = cw / ch;
 
   let drawWidth, drawHeight;
-
   if (aspectCanvas > aspectVideo) {
     drawHeight = ch;
     drawWidth = ch * aspectVideo;
@@ -214,10 +154,8 @@ function draw(time = 0) {
 
   // Временный холст для уменьшенного изображения
   const tempCanvas = document.createElement('canvas');
-
   tempCanvas.width = Math.ceil(drawWidth / pixelSize);
   tempCanvas.height = Math.ceil(drawHeight / pixelSize);
-
   const tempCtx = tempCanvas.getContext('2d');
 
   // Зеркало видео
@@ -227,97 +165,48 @@ function draw(time = 0) {
   tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
   tempCtx.restore();
 
-  const imageData =
-    tempCtx.getImageData(
-      0,
-      0,
-      tempCanvas.width,
-      tempCanvas.height
-    );
+  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
 
   ctx.clearRect(0, 0, cw, ch);
 
-  const offsetX =
-    Math.round((cw - drawWidth) / 2);
+  const offsetX = Math.round((cw - drawWidth) / 2);
+  const offsetY = Math.round((ch - drawHeight) / 2);
 
-  const offsetY =
-    Math.round((ch - drawHeight) / 2);
-
-  const cols =
-    Math.floor(drawWidth / pixelSize);
-
-  const rows =
-    Math.floor(drawHeight / pixelSize);
-
-  const pxW =
-    drawWidth / cols;
-
-  const pxH =
-    drawHeight / rows;
+  const cols = Math.floor(drawWidth / pixelSize);
+  const rows = Math.floor(drawHeight / pixelSize);
+  const pxW = drawWidth / cols;
+  const pxH = drawHeight / rows;
 
   // Рисуем пиксели
   for (let y = 0; y < rows; y++) {
-
     for (let x = 0; x < cols; x++) {
-
-      const i =
-        (y * tempCanvas.width + x) * 4;
-
+      const i = (y * tempCanvas.width + x) * 4;
       const r = imageData.data[i];
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
+      const [fr, fg, fb] = applyFilter(r, g, b);
 
-      const [fr, fg, fb] =
-        applyFilter(r, g, b);
-
-      ctx.fillStyle =
-        `rgb(${fr.toFixed(0)}, ${fg.toFixed(0)}, ${fb.toFixed(0)})`;
-
-      ctx.fillRect(
-        offsetX + x * pxW,
-        offsetY + y * pxH,
-        pxW,
-        pxH
-      );
+      ctx.fillStyle = `rgb(${fr.toFixed(0)}, ${fg.toFixed(0)}, ${fb.toFixed(0)})`;
+      ctx.fillRect(offsetX + x * pxW, offsetY + y * pxH, pxW, pxH);
     }
   }
 
-  // НОВОЕ: живой QR-эффект
-  drawQRNoise(
+  // НОВОЕ: черные пиксели по краям
+  drawEdgePixels(
     offsetX,
     offsetY,
-    drawWidth,
-    drawHeight,
-    pxW,
-    pxH,
     cols,
     rows,
-    time
+    pxW,
+    pxH
   );
 
   // Рисуем QR-углы
-  const qrSize =
-    Math.min(120, drawWidth / 5);
-
+  const qrSize = Math.min(120, drawWidth / 5);
   drawQR(offsetX, offsetY, qrSize);
-
-  drawQR(
-    offsetX + drawWidth - qrSize,
-    offsetY,
-    qrSize
-  );
-
-  drawQR(
-    offsetX,
-    offsetY + drawHeight - qrSize,
-    qrSize
-  );
-
-  drawQR(
-    offsetX + drawWidth - qrSize,
-    offsetY + drawHeight - qrSize,
-    qrSize
-  );
+  drawQR(offsetX + drawWidth - qrSize, offsetY, qrSize);
+  drawQR(offsetX, offsetY + drawHeight - qrSize, qrSize);
+  drawQR(offsetX + drawWidth - qrSize, offsetY + drawHeight - qrSize, qrSize);
 
   requestAnimationFrame(draw);
 }
