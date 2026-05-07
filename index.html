@@ -53,7 +53,7 @@ function applyFilter(r, g, b) {
   ng = ng * 0.85;
   nb = nb * 0.95 + 0.02;
 
-  return [nr * 255, nr * 255, nb * 255];
+  return [nr * 255, ng * 255, nb * 255];
 }
 
 // Рисуем QR-подобный угол
@@ -76,22 +76,22 @@ function drawQR(x, y, size) {
   ctx.fillRect(innerX, innerY, inner, inner);
 }
 
-// НОВОЕ: черные QR-пиксели по краям
+// Хаотичные QR-пиксели по краям
 function drawEdgePixels(offsetX, offsetY, cols, rows, pxW, pxH) {
 
   ctx.fillStyle = "#000";
 
-  const centerStartX = cols * 0.3;
-  const centerEndX = cols * 0.7;
+  const centerStartX = cols * 0.28;
+  const centerEndX = cols * 0.72;
 
-  const centerStartY = rows * 0.25;
-  const centerEndY = rows * 0.75;
+  const centerStartY = rows * 0.22;
+  const centerEndY = rows * 0.78;
 
   for (let y = 0; y < rows; y++) {
 
     for (let x = 0; x < cols; x++) {
 
-      // Оставляем центр чистым
+      // Чистый центр для лица
       const inCenter =
         x > centerStartX &&
         x < centerEndX &&
@@ -100,17 +100,17 @@ function drawEdgePixels(offsetX, offsetY, cols, rows, pxW, pxH) {
 
       if (inCenter) continue;
 
-      // Только по краям
-      const edge =
-        x < 4 ||
-        x > cols - 5 ||
-        y < 3 ||
-        y > rows - 4;
+      // Только ближе к краям
+      const nearEdge =
+        x < 5 ||
+        x > cols - 6 ||
+        y < 4 ||
+        y > rows - 5;
 
-      if (!edge) continue;
+      if (!nearEdge) continue;
 
-      // Случайные QR-квадраты
-      if (Math.random() > 0.72) {
+      // Редкие хаотичные квадраты
+      if (Math.random() > 0.93) {
 
         ctx.fillRect(
           offsetX + x * pxW,
@@ -144,6 +144,7 @@ function draw() {
   const aspectCanvas = cw / ch;
 
   let drawWidth, drawHeight;
+
   if (aspectCanvas > aspectVideo) {
     drawHeight = ch;
     drawWidth = ch * aspectVideo;
@@ -156,6 +157,7 @@ function draw() {
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = Math.ceil(drawWidth / pixelSize);
   tempCanvas.height = Math.ceil(drawHeight / pixelSize);
+
   const tempCtx = tempCanvas.getContext('2d');
 
   // Зеркало видео
@@ -165,7 +167,12 @@ function draw() {
   tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
   tempCtx.restore();
 
-  const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+  const imageData = tempCtx.getImageData(
+    0,
+    0,
+    tempCanvas.width,
+    tempCanvas.height
+  );
 
   ctx.clearRect(0, 0, cw, ch);
 
@@ -174,24 +181,36 @@ function draw() {
 
   const cols = Math.floor(drawWidth / pixelSize);
   const rows = Math.floor(drawHeight / pixelSize);
+
   const pxW = drawWidth / cols;
   const pxH = drawHeight / rows;
 
   // Рисуем пиксели
   for (let y = 0; y < rows; y++) {
+
     for (let x = 0; x < cols; x++) {
+
       const i = (y * tempCanvas.width + x) * 4;
+
       const r = imageData.data[i];
       const g = imageData.data[i + 1];
       const b = imageData.data[i + 2];
+
       const [fr, fg, fb] = applyFilter(r, g, b);
 
-      ctx.fillStyle = `rgb(${fr.toFixed(0)}, ${fg.toFixed(0)}, ${fb.toFixed(0)})`;
-      ctx.fillRect(offsetX + x * pxW, offsetY + y * pxH, pxW, pxH);
+      ctx.fillStyle =
+        `rgb(${fr.toFixed(0)}, ${fg.toFixed(0)}, ${fb.toFixed(0)})`;
+
+      ctx.fillRect(
+        offsetX + x * pxW,
+        offsetY + y * pxH,
+        pxW,
+        pxH
+      );
     }
   }
 
-  // НОВОЕ: черные пиксели по краям
+  // QR-пиксели по краям
   drawEdgePixels(
     offsetX,
     offsetY,
@@ -203,6 +222,7 @@ function draw() {
 
   // Рисуем QR-углы
   const qrSize = Math.min(120, drawWidth / 5);
+
   drawQR(offsetX, offsetY, qrSize);
   drawQR(offsetX + drawWidth - qrSize, offsetY, qrSize);
   drawQR(offsetX, offsetY + drawHeight - qrSize, qrSize);
